@@ -22,7 +22,7 @@ public class DateConverter extends TokenConverter<Date> {
 
 	/**
 	 * ISO-8601<br>
-	 * XXX json2.jsのJSON.stringifyではミリ秒を出力しない。
+	 * XXX json2.jsのJSON.stringifyではミリ秒を出力しない
 	 */
 	private static UTCDateFormat dateFormat = new UTCDateFormat(
 			"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
