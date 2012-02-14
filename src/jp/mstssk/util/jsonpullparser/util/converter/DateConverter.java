@@ -2,8 +2,6 @@ package jp.mstssk.util.jsonpullparser.util.converter;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
@@ -25,14 +23,7 @@ import net.vvakame.util.jsonpullparser.util.TokenConverter;
 public class DateConverter extends TokenConverter<Date> {
 
 	/**
-	 * ISO-8601拡張日付フォーマット<br>
-	 * json2.jsのJSON.stringifyではミリ秒を出力しない
-	 */
-	private static final UTCDateFormat dateFormat = new UTCDateFormat(
-			"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-
-	/**
-	 * 日付パターン<br>
+	 * 正規表現 日付パターン<br>
 	 * ミリ秒の省略に対応（ECMA-262 5th Edition # 15.9.1.15 Date Time String Format）
 	 */
 	private static final Pattern datePattern = Pattern
@@ -67,9 +58,10 @@ public class DateConverter extends TokenConverter<Date> {
 				throw new JsonFormatException("Illegal format for date string.");
 		}
 
-		if (listener != null) {
-			listener.onAdd(date);
-		}
+		// 任意にコメントアウトを解除して使用
+		// if (listener != null) {
+		// listener.onAdd(date);
+		// }
 
 		return date;
 	}
@@ -79,41 +71,64 @@ public class DateConverter extends TokenConverter<Date> {
 	 */
 	@Override
 	public void encodeNullToNull(Writer writer, Date obj) throws IOException {
-
 		JsonUtil.put(writer, formatDateStr(obj));
-
 	}
 
 	/**
-	 * Dateオブジェクトを日付文字列へ
+	 * Dateオブジェクトを日付文字列へ<br>
+	 * ISO-8601拡張日付フォーマット<br>
+	 * yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
 	 * 
 	 * @param date Date
 	 * @return String
 	 */
 	private String formatDateStr(Date date) {
+
 		if (date == null) {
 			return null;
-		} else {
-			return dateFormat.format(date);
 		}
+
+		StringBuilder builder = new StringBuilder();
+
+		Calendar calender = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+		calender.setTime(date);
+
+		formatDigit(builder, calender.get(Calendar.YEAR), 4);
+		builder.append('-');
+		formatDigit(builder, calender.get(Calendar.MONTH) + 1, 2);
+		builder.append('-');
+		formatDigit(builder, calender.get(Calendar.DAY_OF_MONTH), 2);
+		builder.append('T');
+		formatDigit(builder, calender.get(Calendar.HOUR_OF_DAY), 2);
+		builder.append(':');
+		formatDigit(builder, calender.get(Calendar.MINUTE), 2);
+		builder.append(':');
+		formatDigit(builder, calender.get(Calendar.SECOND), 2);
+		builder.append('.');
+		formatDigit(builder, calender.get(Calendar.MILLISECOND), 3);
+		builder.append('Z');
+
+		return builder.toString();
 	}
 
 	/**
-	 * 日付文字列をパース
+	 * 指定した桁数でゼロ埋め
 	 * 
-	 * @param dateStr 日付文字列
-	 * @return Date
-	 * @throws JsonFormatException
+	 * @param builder
+	 * @param value
+	 * @param length
 	 */
-	@Deprecated
-	private Date parseDateString(String dateStr) throws JsonFormatException {
-		Date date = null;
-		try {
-			date = dateFormat.parse(dateStr);
-		} catch (ParseException e) {
-			throw new JsonFormatException(e);
+	private void formatDigit(StringBuilder builder, int value, int length) {
+
+		int digit = 1;
+		for (int i = 1; i < length; i++) {
+			digit *= 10;
+			if (digit > value) {
+				builder.append('0');
+			}
 		}
-		return date;
+		builder.append(value);
+
 	}
 
 	/**
@@ -129,16 +144,16 @@ public class DateConverter extends TokenConverter<Date> {
 
 			Matcher matcher = datePattern.matcher(str);
 			matcher.find();
-			int year = parseInt(matcher.group(1));
-			int month = parseInt(matcher.group(2));
-			int day = parseInt(matcher.group(3));
-			int hour = parseInt(matcher.group(4));
-			int min = parseInt(matcher.group(5));
-			int sec = parseInt(matcher.group(6));
+			int year = Integer.parseInt(matcher.group(1));
+			int month = Integer.parseInt(matcher.group(2));
+			int day = Integer.parseInt(matcher.group(3));
+			int hour = Integer.parseInt(matcher.group(4));
+			int min = Integer.parseInt(matcher.group(5));
+			int sec = Integer.parseInt(matcher.group(6));
 			int milli = 0;
 			String milliStr = matcher.group(7);
 			if (milliStr != null) {
-				milli = parseInt(milliStr);
+				milli = Integer.parseInt(milliStr);
 			}
 
 			Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
@@ -150,37 +165,6 @@ public class DateConverter extends TokenConverter<Date> {
 		} catch (IllegalStateException e) {
 			throw new JsonFormatException(e);
 		}
-	}
-
-	/**
-	 * Integer.parseInt
-	 * 
-	 * @see java.lang.Integer.parseInt
-	 * @param str String
-	 * @return int
-	 */
-	private int parseInt(String str) {
-		return Integer.parseInt(str);
-	}
-
-	/**
-	 * UTC DateFormat
-	 * 
-	 * @author mstssk
-	 */
-	private static class UTCDateFormat extends SimpleDateFormat {
-
-		/** シリアルバージョン */
-		private static final long serialVersionUID = 7578410179499211362L;
-
-		/**
-		 * コンストラクタ
-		 */
-		public UTCDateFormat(String pattern) {
-			applyPattern(pattern);
-			setTimeZone(TimeZone.getTimeZone("UTC"));
-		}
-
 	}
 
 }
